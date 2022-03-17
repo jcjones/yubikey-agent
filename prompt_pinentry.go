@@ -11,6 +11,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/twpayne/go-pinentry-minimal/pinentry"
 )
@@ -32,6 +34,20 @@ func getPIN(serial uint32, retries int) (string, error) {
 	}
 	defer client.Close()
 
-	pin, _, err := client.GetPIN()
-	return pin, err
+	for retry := 0; retry < 16; retry++ {
+		pin, _, err := client.GetPIN()
+		if err == nil && len(pin) > 0 {
+			return pin, err
+		}
+
+		if len(pin) == 0 {
+			fmt.Fprintf(os.Stderr, "Unexpected blank PIN. Retrying getPIN, try #%d\n", retry)
+		} else {
+			fmt.Fprintf(os.Stderr, "Unexpected error. Retrying getPIN, try #%d: %s\n", err.Error())
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+
+	return "", err
+
 }
